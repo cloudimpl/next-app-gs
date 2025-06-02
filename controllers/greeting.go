@@ -1,21 +1,31 @@
 package controllers
 
 import (
-	"github.com/cloudimpl/next-coder-sdk/api"
+	"github.com/cloudimpl/next-coder-sdk/apicontext"
 	"github.com/cloudimpl/next-coder-sdk/polycode"
+	"github.com/gin-gonic/gin"
 	"portal/register/model"
 )
 
-func greeting(ctx polycode.WorkflowContext, input model.HelloRequest) (model.HelloResponse, error) {
-	greetingService := ctx.Service("greeting-service").Get()
-
-	var output model.HelloResponse
-	res := greetingService.RequestReply(polycode.TaskOptions{}, "greeting", input)
-	if err := res.Get(&output); err != nil {
-		return model.HelloResponse{}, err
+func Greeting(c *gin.Context) {
+	var req model.HelloRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
 	}
 
-	return output, nil
-}
+	apiCtx, err := apicontext.FromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
 
-var Greeting = api.FromWorkflow(greeting)
+	greetingService := apiCtx.Service("greeting-service").Get()
+	res, err := greetingService.RequestReply(polycode.TaskOptions{}, "Greeting", req).GetAny()
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, res)
+}
